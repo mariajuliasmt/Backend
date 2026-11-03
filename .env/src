@@ -1,0 +1,45 @@
+# Para rodar corretamente o sistema, é necessário adicionar ao arquivo 
+# .env as variáveis privadas de ambiente, são elas:
+
+#   -Modelo do LLM usado para gerar respostas
+LLM_MODEL= NOME_DO MODELO_A_SER_USADO
+
+#   -URL do servidor local do modelo
+LLM_BASE_URL=http://localhost:8000/v1
+
+#   -Chave utilizada da API
+LLM_API_KEY=SUA_CHAVE_API  # mesma chave utilizada no docker 
+# ============ PIPELINE DO BANCO DE DADOS ============
+
+
+EMBEDDING_MODEL = BAAI/bge-m3  
+WEIGHT_EMBEDDING = 0.80
+WEIGHT_KEYWORDS = 0.20             
+DUPLICATION_THRESHOLD = 0.05       # Diferença máxima entre scores
+
+BASE_FOLDER = base               # Pasta onde estão os PDF´s
+WINDOW_SIZE = 3                    # Comprimento da janela de contexto
+chunk_SIZE=500
+overlap=75
+
+PERSIST_DIRECTORY = DataBase     # Como o banco será salvo
+
+# ========================X====X=======================
+
+
+# ============ PIPELINE DO LLM ============
+temperature = 0.0
+DEFAULT_LLM_TIMEOUT_S = 120
+DEFAULT_LLM_MAX_TOKENS = 350
+DEFAULT_LLM_SLOW_THRESHOLD_S = 60
+
+# ============ EMBEDDING / RETRIEVAL ============
+#k Usado em query_api()
+k_retrieval = 3
+#k Usado em quest()
+k_results = 4
+#t (tal) usado na comparação de similaridade de embeddings com pergunta [quest()]
+t = 0.5 
+
+
+
