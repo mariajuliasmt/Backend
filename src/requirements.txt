@@ -1,0 +1,15 @@
+# Dependências para pipeline de execução principal
+chromadb
+langchain-chroma
+langchain-community>=0.3.27,<0.4.0
+langchain-core
+langchain-huggingface
+langchain-openai
+langchain-text-splitters
+numpy
+openai
+pypdf
+scikit-learn
+sentence-transformers
+torch
+transformers

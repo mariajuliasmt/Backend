@@ -1,0 +1,21 @@
+# Avaliação RAG
+ragas
+
+# Dados e análise
+datasets
+pandas
+scipy
+
+# Visualização
+matplotlib
+
+# Monitoramento dos benchmarks
+psutil
+
+# Utilizadas pelo harness de benchmark atual
+requests
+python-dotenv
+
+# Ambiente de experimentação
+jupyter
+ipykernel
