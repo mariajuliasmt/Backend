@@ -1,8 +1,8 @@
 """
 E2 — Comparação de modelos locais (RQ2).
 
-Executa o benchmark completo para cada modelo com o pipeline C2 (TutorIA proposta).
-Organiza saídas em ragas_result/experiments/e2/<model_id>/ e consolida resultados.
+Executa o benchmark completo para cada modelo 
+Organiza saídas em ragas_result/experiments/e2/<model_id>/
 
 Uso (PowerShell — comando em UMA linha, sem barra invertida):
   # antes: servidor vLLM no Colab + túnel; defina VLLM_BASE_URL, VLLM_API_KEY (e, opcional, VLLM_VRAM_MB)
