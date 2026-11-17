@@ -1,0 +1,40 @@
+# Servidor vLLM (API OpenAI-compatível). Requer GPU NVIDIA + NVIDIA Container Toolkit.
+# Subir:    docker compose --profile gpu up -d
+# Validar:  docker compose --profile gpu config
+services:
+  vllm:
+    profiles: ["gpu"]              # não sobe por acidente em máquina sem GPU
+    image: vllm/vllm-openai:${VLLM_VERSION:-latest}   # fixe a versão no .env
+    container_name: vllm
+    restart: unless-stopped
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    environment:
+      - HF_TOKEN=${HF_TOKEN:?defina HF_TOKEN no .env}
+    volumes:
+      - hf-cache:/root/.cache/huggingface    # modelos baixados ficam aqui
+    ipc: host
+    command: >
+      --model ${VLLM_MODEL:?defina VLLM_MODEL no .env}
+      --served-model-name ${VLLM_SERVED_NAME:?defina VLLM_SERVED_NAME no .env}
+      --api-key ${VLLM_API_KEY:?defina VLLM_API_KEY no .env}
+      --max-model-len ${LLM_MAX_LEN:-8192}
+      --gpu-memory-utilization ${LLM_GPU_UTIL:-0.90}
+      ${LLM_EXTRA_ARGS:-}
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=4).status == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 120s
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+volumes:
+  hf-cache:
+
