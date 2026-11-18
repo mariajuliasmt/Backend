@@ -1,0 +1,4 @@
+# Dependências do harness E1/E2
+pandas
+psutil
+requests
