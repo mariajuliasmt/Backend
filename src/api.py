@@ -5,9 +5,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from src.config import settings
-from src.formatter import format_response
-from src.pipeline import quest
+from config import settings
+from formatter import format_response
+from pipeline import quest
 
 app = FastAPI(title="TutorIA API")
 
