@@ -37,7 +37,6 @@ MANUAL_SCORE_COLUMNS = [
 
 def load_env() -> None:
     load_dotenv(ENIAC_DIR / ".env")
-    os.chdir(ENIAC_DIR)
 
 
 def model_output_dir(model_id: str) -> Path:
