@@ -1,8 +1,8 @@
 import chromadb
 from langchain_chroma import Chroma
 
-from src.router import embeddings
-from src.config import settings
+from router import embeddings
+from config import settings
 
 # PersistentClient recebe um caminho absoluto para não depender do diretório de execução.
 chroma_client = chromadb.PersistentClient(path=settings.PERSIST_DIRECTORY)
