@@ -10,7 +10,7 @@ services:
     ports:
       - "${VLLM_PORT:-8000}:8000"
     environment:
-      - HF_TOKEN=${HF_TOKEN:?defina HF_TOKEN no .env}
+      - HF_TOKEN=${HF_TOKEN:-}
     volumes:
       - hf-cache:/root/.cache/huggingface    # modelos baixados ficam aqui
     ipc: host
