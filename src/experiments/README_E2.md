@@ -35,11 +35,12 @@ compatível. O nome servido deve corresponder ao identificador configurado no
 benchmark: `llama-int8` ou `mathstral-bf16`.
 
 ```bash
-curl -fsS "$VLLM_BASE_URL/models" -H "Authorization: Bearer $VLLM_API_KEY"
+VLLM_ROOT_URL="${VLLM_BASE_URL%/v1}"
+curl -fsS "$VLLM_ROOT_URL/v1/models" -H "Authorization: Bearer $VLLM_API_KEY"
 ```
 
-Se `VLLM_BASE_URL` terminar em `/v1`, o endpoint acima consulta
-`/v1/models`. Configure o mesmo nome em `LLM_MODEL` antes de testar a API.
+O comando normaliza a URL e consulta sempre `/v1/models`. O nome publicado
+precisa ser idêntico ao nome que o benchmark usa para o modelo selecionado.
 
 ## 3. Executar E2
 
