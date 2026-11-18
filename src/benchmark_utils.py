@@ -37,6 +37,7 @@ MANUAL_SCORE_COLUMNS = [
 
 def load_env() -> None:
     load_dotenv(ENIAC_DIR / ".env")
+    # Os caminhos relativos do .env (DataBase, base e ragas_result) são relativos a src/.
     os.chdir(ENIAC_DIR)
 
 
@@ -271,7 +272,10 @@ def _apply_backend_env(model: dict) -> None:
             _SAVED_LLM_ENV = {k: os.environ.get(k) for k in keys}
         base = base.rstrip("/")
         os.environ["LLM_BASE_URL"] = base if base.endswith("/v1") else base + "/v1"
-        os.environ["LLM_API_KEY"] = os.getenv("VLLM_API_KEY", "")
+        api_key = os.getenv("VLLM_API_KEY", "").strip()
+        if not api_key:
+            raise ValueError("VLLM_API_KEY não definida; use a mesma chave configurada com --api-key no servidor vLLM.")
+        os.environ["LLM_API_KEY"] = api_key
     elif _SAVED_LLM_ENV is not None:
         for k, v in _SAVED_LLM_ENV.items():
             if v is None:

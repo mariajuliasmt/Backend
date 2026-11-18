@@ -1,4 +1,3 @@
-import os
 import json
 import urllib.request
 
@@ -6,99 +5,65 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from src.pipeline import quest
-from src.formatter import format_response
-from src.config import settings
+from config import settings
+from formatter import format_response
+from pipeline import quest
 
-app = FastAPI()
-
+app = FastAPI(title="TutorIA API")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
 class Requisicao(BaseModel):
-    type: str
+    type: str = "message"
     message: str
-    source: str
-    timestamp: str
+    source: str = "unknown"
+    timestamp: str = ""
+
+
+def _llm_root_url() -> str:
+    url = settings.LLM_BASE_URL.strip().rstrip("/")
+    return url[:-3] if url.endswith("/v1") else url
+
+
+def _http_get(url: str, headers: dict | None = None):
+    request = urllib.request.Request(url, headers=headers or {})
+    return urllib.request.urlopen(request, timeout=5)
 
 
 @app.post("/TutorIA")
 def tutoria(dados: Requisicao):
+    resposta = quest(dados.message)
+    return {"resposta": format_response(resposta)}
 
-    question = dados.message
-
-    resposta = quest(question)
-    resposta_formatada = format_response(resposta)
-
-    return {
-        "resposta": resposta_formatada
-    }
-## health check
-
-def _llm_root_url() -> str:
-  """URL do servidor vLLM sem o /v1, o /health fica na raiz, fora do /v1."""
-  url = settings.LLM_BASE_URL.strip().rstrip("/")
-  if url.endswith("/v1"):
-    return url[:-3]
-  else:
-    return url
 
 @app.get("/health")
 def health_check():
-    health_status = {
-        "status": "ok",
-        "llm": "desconhecido",
-        "chromadb": "desconhecido"
-    }
-
-    # 1. Checando o servidor
+    status = {"status": "ok", "llm": "desconhecido", "chromadb": "desconhecido"}
     try:
-        ## sem url = settings.LLM_BASE_URL, que era a key do Ollama
-      
-        resposta = _http_get(f"{_llm_root_url()}/health")
-      
-        if resposta.getcode() == 200:
-            health_status["llm"] = "ok"
-        else:
-            health_status["status"] = "erro"
-            health_status["llm"] = f"erro - http {resposta.getcode()}"
-            
-    except Exception as e:
-        health_status["status"] = "erro"
-        health_status["llm"] = "offline - verifique se o servidor do Ollama está rodando"
+        with _http_get(f"{_llm_root_url()}/health") as response:
+            status["llm"] = "ok" if response.status == 200 else f"erro - http {response.status}"
+        with _http_get(
+            f"{_llm_root_url()}/v1/models",
+            headers={"Authorization": f"Bearer {settings.LLM_API_KEY}"},
+        ) as response:
+            served = [m.get("id") for m in json.loads(response.read()).get("data", [])]
+        if settings.LLM_MODEL not in served:
+            status["llm"] = f"erro - modelo '{settings.LLM_MODEL}' não servido; disponíveis: {served}"
+    except Exception as exc:
+        status["status"] = "erro"
+        status["llm"] = f"offline/indisponível: {exc}"
 
-    # 2. Checando o ChromaDB
-    try:
-        if os.path.exists(settings.PATH_DB):
-            health_status["chromadb"] = "ok"
-        else:
-            health_status["status"] = "erro"
-            health_status["chromadb"] = f"erro - pasta '{settings.PATH_DB}' não encontrada"
-            
-    except Exception as e:
-        health_status["status"] = "erro"
-        health_status["chromadb"] = "erro de leitura local"
-
-    return health_status
-
-
-  # 3. Checando se o alias está sendo servido
-
-if health_status["llm"] == "ok":
-  try:
-    resposta = _http_get(f"{_llm_root_url()}/v1/models",
-                         headers={"Authorization": f"Bearer {settings.LLM_API_KEY"})
-    servidos = [m["id"] for m in json.loads(resposta.read()).get("data", [])]
-    if settings.LLM_MODEL not int servidos:
-    health_status["status"] = "erro"
-    health_status["llm"] = f"erro - modelo '{settings.LLM_MODEL}' não é servido. São servidos: {servidos})"
-except Exception:
-health_status["status"] = "erro"
-health_status["llm"] = "erro - servidor no ar, porém /v1/models recusou. Verifique a chave da API." 
+    import os
+    if os.path.isdir(settings.PATH_DB):
+        status["chromadb"] = "ok"
+    else:
+        status["status"] = "erro"
+        status["chromadb"] = f"diretório não encontrado: {settings.PATH_DB}"
+    return status

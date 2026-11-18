@@ -2,7 +2,7 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
 
-from tutoria.rag.config import settings
+from config import settings
 
 
 # Descrição do Conteúdo de Cada Collections
