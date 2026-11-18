@@ -5,9 +5,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from src.retriever import get_vectorstore
-from src.router import embeddings, classify_text, route_question
-from src.config import settings
+from retriever import get_vectorstore
+from router import embeddings, classify_text, route_question
+from config import settings
 
 PATH_DB = settings.PATH_DB
 
