@@ -6,9 +6,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from src.pipeline import quest
-from src.formatter import format_response
-from src.config import settings
+from pipeline import quest
+from formatter import format_response
+from config import settings
 
 app = FastAPI()
 
