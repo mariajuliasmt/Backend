@@ -39,9 +39,13 @@ docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi
 O último comando valida o acesso do Docker à GPU. Se falhar, resolva primeiro
 driver/WSL/NVIDIA Container Toolkit; não tente iniciar o vLLM ainda.
 
-Valide a configuração e suba o servidor:
+Carregue as variáveis no terminal para os testes com `curl` e valide a
+configuração do Compose:
 
 ```bash
+set -a
+source .env
+set +a
 docker compose --profile gpu config
 docker compose --profile gpu up -d
 docker compose logs -f vllm
