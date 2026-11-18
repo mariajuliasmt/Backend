@@ -2,9 +2,9 @@ import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from tutoria.rag.retriever import get_vectorstore
-from tutoria.rag.router import select_target_collections
-from tutoria.rag.config import settings
+from src.retriever import get_vectorstore
+from src.router import select_target_collections
+from src.config import settings
 
 
 # =============== CRIAÇÃO DO BANCO DE DADOS ===============
