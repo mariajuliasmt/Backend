@@ -1,4 +1,4 @@
-# Dependências para pipeline de execução principal
+# Dependências da aplicação TutorIA (runtime)
 chromadb
 langchain-chroma
 langchain-community>=0.3.27,<0.4.0
@@ -13,13 +13,9 @@ scikit-learn
 sentence-transformers
 torch
 transformers
+
 # API e configuração
 fastapi
 uvicorn[standard]
 pydantic-settings
-
-# Harness E1/E2 (benchmark_utils importa estas bibliotecas)
-pandas
-psutil
-requests
 python-dotenv
