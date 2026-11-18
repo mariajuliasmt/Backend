@@ -8,7 +8,7 @@ import base64
 # ============================================================
 
 BASE_DIR = Path(__file__).resolve().parent
-IMAGES_DIR = BASE_DIR / "imagens"
+IMAGES_DIR = BASE_DIR / "images"
 
 
 # ============================================================
