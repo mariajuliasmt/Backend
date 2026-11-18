@@ -1,7 +1,7 @@
 import chromadb
 from langchain_chroma import Chroma
-from tutoria.rag.router import embeddings
-from tutoria.rag.config import settings
+from router import embeddings
+from config import settings
 
 # Modelo de Embeddings
 chroma_client = chromadb.PersistentClient(path=settings.PERSIST_DIRECTORY)
