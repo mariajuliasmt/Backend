@@ -1,21 +1,11 @@
-# Avaliação RAG
+# Avaliação RAGAS
 ragas
-
-# Dados e análise
 datasets
-pandas
 scipy
 
-# Visualização
+# Visualização e análise dos resultados
 matplotlib
 
-# Monitoramento dos benchmarks
-psutil
-
-# Utilizadas pelo harness de benchmark atual
-requests
-python-dotenv
-
-# Ambiente de experimentação
+# Execução em notebooks (opcional fora do Colab/Jupyter)
 jupyter
 ipykernel
