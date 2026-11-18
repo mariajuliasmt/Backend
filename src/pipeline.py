@@ -5,9 +5,9 @@ from langchain_core.messages import HumanMessage
 from langchain_core.prompts import PromptTemplate
 from langchain_openai import ChatOpenAI
 
-from src.retriever import get_vectorstore
-from src.router import embeddings, classify_text, route_question
-from src.config import settings
+from retriever import get_vectorstore
+from router import embeddings, classify_text, route_question
+from config import settings
 
 PATH_DB = settings.PATH_DB
 
@@ -68,15 +68,13 @@ def _env_int(name: str, default: int) -> int:
 ## conectando ao servidor vLLM
 
 def _with_v1(url: str) -> str:
-  """URL termina em /v1. Cliente OpenAI add /chat/completions."""
-  url = (url or "").strip().rstrip("/")
-  if url.endswith("/v1"):
-    return url
-  else:
-    return url + "/v1"
-    
+    """Normaliza a URL da API OpenAI para terminar em /v1."""
+    url = (url or "").strip().rstrip("/")
+    return url if url.endswith("/v1") else url + "/v1"
+
+
 def extract_generation_stats(response, elapsed_s: float) -> dict:
-    """Extrai tokens e tok/s da resposta LangChain (API OpenAI-compatible do vLLM)."""
+    """Extrai tokens e velocidade da resposta LangChain."""
     meta = getattr(response, "response_metadata", None) or {}
     usage = meta.get("token_usage") or meta.get("usage") or {}
     completion = (
@@ -87,14 +85,9 @@ def extract_generation_stats(response, elapsed_s: float) -> dict:
     prompt = usage.get("prompt_tokens") or usage.get("input_tokens")
     content = (getattr(response, "content", None) or "").strip()
     chars = len(content)
-
     if completion is None and chars:
         completion = max(1, chars // 4)
-
-    tok_per_s = None
-    if completion and elapsed_s > 0:
-        tok_per_s = round(completion / elapsed_s, 2)
-
+    tok_per_s = round(completion / elapsed_s, 2) if completion and elapsed_s > 0 else None
     return {
         "completion_tokens": completion,
         "prompt_tokens": prompt,
@@ -195,8 +188,9 @@ def quest(question: str):
     results = database.similarity_search_with_relevance_scores(question, k= settings.k_results)
 
     if len(results) == 0 or results[0][1] < settings.t:
-        print("Resultados: ", results[0][0])
-        print("Score: ", results[0][1])
+        if results:
+            print("Resultados: ", results[0][0])
+            print("Score: ", results[0][1])
         print("Não sei te dizer isso")
         return
 
