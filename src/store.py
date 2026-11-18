@@ -2,9 +2,9 @@ import os
 from langchain_community.document_loaders import PyPDFDirectoryLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from src.retriever import get_vectorstore
-from src.router import select_target_collections
-from src.config import settings
+from retriever import get_vectorstore
+from router import select_target_collections
+from config import settings
 
 
 # =============== CRIAÇÃO DO BANCO DE DADOS ===============
