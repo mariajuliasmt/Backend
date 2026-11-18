@@ -37,6 +37,8 @@ MANUAL_SCORE_COLUMNS = [
 
 def load_env() -> None:
     load_dotenv(ENIAC_DIR / ".env")
+    # Os caminhos relativos do .env (DataBase, base e ragas_result) são relativos a src/.
+    os.chdir(ENIAC_DIR)
 
 
 def model_output_dir(model_id: str) -> Path:
