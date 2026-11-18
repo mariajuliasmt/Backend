@@ -1,4 +1,4 @@
-"""Utilitários compartilhados pelo pipeline de benchmark E1/E2."""
+"""Utilitários compartilhados pelo pipeline de benchmark E1/E2 (vLLM / OpenAI-compatível)."""
 
 from __future__ import annotations
 
@@ -12,15 +12,13 @@ from typing import Any
 
 import pandas as pd
 import psutil
-import requests
 from dotenv import load_dotenv
 
 ENIAC_DIR = Path(__file__).resolve().parent
 DATASET_PATH = ENIAC_DIR / "DataSet" / "dataset.json"
 BENCHMARK_DIR = ENIAC_DIR / "ragas_result" / "benchmark"
-OLLAMA_BASE = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
-# Modelos servidos pelo vLLM (Colab, formatos nativos). "tag" = nome servido (--served-model-name).
+# Modelos servidos pelo vLLM. "tag" = nome servido (--served-model-name).
 MODELS = [
     {"id": "llama31_8b_int8_vllm",   "name": "Llama 3.1 8B W8A8 (vLLM)", "tag": "llama-int8",     "class": "8B", "backend": "vllm", "format": "int8-w8a8"},
     {"id": "mathstral_7b_bf16_vllm", "name": "Mathstral 7B bf16 (vLLM)", "tag": "mathstral-bf16", "class": "7B", "backend": "vllm", "format": "bf16"},
@@ -144,43 +142,6 @@ def load_dataset() -> pd.DataFrame:
     return df
 
 
-def check_ollama() -> dict[str, Any]:
-    try:
-        r = requests.get(f"{OLLAMA_BASE}/api/tags", timeout=5)
-        r.raise_for_status()
-        return {"ok": True, "models": [m["name"] for m in r.json().get("models", [])]}
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
-
-
-def ollama_pull(model_tag: str) -> None:
-    """Baixa modelo via CLI ou API HTTP (fallback quando ollama não está no PATH)."""
-    try:
-        subprocess.run(["ollama", "pull", model_tag], check=True)
-        return
-    except (FileNotFoundError, subprocess.CalledProcessError):
-        pass
-
-    print(f"Pull via API: {model_tag}")
-    r = requests.post(
-        f"{OLLAMA_BASE}/api/pull",
-        json={"name": model_tag},
-        stream=True,
-        timeout=3600,
-    )
-    r.raise_for_status()
-    for line in r.iter_lines():
-        if not line:
-            continue
-        status = json.loads(line).get("status", "")
-        if status:
-            print(f"  {status}")
-
-
-def ollama_stop() -> None:
-    subprocess.run(["ollama", "stop"], check=False)
-
-
 def snapshot_vram() -> dict[str, Any]:
     try:
         result = subprocess.run(
@@ -205,54 +166,15 @@ def snapshot_vram() -> dict[str, Any]:
 
 def snapshot_ram() -> dict[str, Any]:
     mem = psutil.virtual_memory()
-    ollama_ram_mb = 0
-    for proc in psutil.process_iter(["name", "memory_info"]):
-        try:
-            if proc.info["name"] and "ollama" in proc.info["name"].lower():
-                ollama_ram_mb += proc.info["memory_info"].rss // (1024 * 1024)
-        except (psutil.NoSuchProcess, psutil.AccessDenied):
-            pass
     return {
         "ram_used_gb": round(mem.used / (1024**3), 2),
         "ram_total_gb": round(mem.total / (1024**3), 2),
         "ram_pct": mem.percent,
-        "ollama_ram_mb": ollama_ram_mb,
-    }
-
-
-def measure_ollama_tps(model_tag: str, prompt: str | None = None) -> dict[str, Any]:
-    """Warm-up + medição de tokens/s via API Ollama."""
-    prompt = prompt or "Explique em uma frase o que é uma porta lógica AND."
-    payload = {
-        "model": model_tag,
-        "prompt": prompt,
-        "stream": False,
-        "options": {"temperature": 0, "num_predict": 128},
-    }
-    t0 = time.perf_counter()
-    r = requests.post(f"{OLLAMA_BASE}/api/generate", json=payload, timeout=600)
-    r.raise_for_status()
-    wall_s = time.perf_counter() - t0
-    data = r.json()
-    eval_count = data.get("eval_count", 0)
-    eval_duration_ns = data.get("eval_duration", 0)
-    tok_s_api = eval_count / (eval_duration_ns / 1e9) if eval_duration_ns else 0.0
-    tok_s_wall = eval_count / wall_s if wall_s else 0.0
-    return {
-        "eval_count": eval_count,
-        "eval_duration_ns": eval_duration_ns,
-        "tokens_per_second_api": round(tok_s_api, 2),
-        "tokens_per_second_wall": round(tok_s_wall, 2),
-        "wall_seconds": round(wall_s, 2),
-        "load_duration_ns": data.get("load_duration"),
-        "total_duration_ns": data.get("total_duration"),
     }
 
 
 # ---------------------------------------------------------------------------
-# Backend vLLM (API compativel com OpenAI). Modelos com "backend": "vllm" usam
-# VLLM_BASE_URL / VLLM_API_KEY (variaveis de ambiente ou .env). Os modelos do
-# Ollama continuam exatamente como antes.
+# Backend vLLM (API compatível com OpenAI).
 # ---------------------------------------------------------------------------
 _SAVED_LLM_ENV: dict[str, str | None] | None = None
 
@@ -261,42 +183,30 @@ def _apply_backend_env(model: dict) -> None:
     """Aponta LLM_BASE_URL/LLM_API_KEY para o vLLM (ou restaura os valores anteriores)."""
     global _SAVED_LLM_ENV
     keys = ("LLM_BASE_URL", "LLM_API_KEY")
-    if model.get("backend") == "vllm":
-        base = os.getenv("VLLM_BASE_URL")
-        if not base:
-            raise ValueError(
-                "VLLM_BASE_URL não definida (URL do túnel do Colab, ex.: https://xxxx.trycloudflare.com)."
-            )
-        if _SAVED_LLM_ENV is None:
-            _SAVED_LLM_ENV = {k: os.environ.get(k) for k in keys}
-        base = base.rstrip("/")
-        os.environ["LLM_BASE_URL"] = base if base.endswith("/v1") else base + "/v1"
-        os.environ["LLM_API_KEY"] = os.getenv("VLLM_API_KEY", "")
-    elif _SAVED_LLM_ENV is not None:
-        for k, v in _SAVED_LLM_ENV.items():
-            if v is None:
-                os.environ.pop(k, None)
-            else:
-                os.environ[k] = v
-        _SAVED_LLM_ENV = None
+    base = os.getenv("VLLM_BASE_URL")
+    if not base:
+        raise ValueError(
+            "VLLM_BASE_URL não definida (URL do servidor ou túnel, ex.: http://localhost:8000/v1 ou https://xxxx.trycloudflare.com)."
+        )
+    if _SAVED_LLM_ENV is None:
+        _SAVED_LLM_ENV = {k: os.environ.get(k) for k in keys}
+    base = base.rstrip("/")
+    os.environ["LLM_BASE_URL"] = base if base.endswith("/v1") else base + "/v1"
+    os.environ["LLM_API_KEY"] = os.getenv("VLLM_API_KEY", "")
 
 
 def snapshot_vram_remote() -> dict[str, Any]:
-    """VRAM do servidor vLLM (Colab): informe com VLLM_VRAM_MB (valor 'vram_mib' do bench_*.json)."""
+    """VRAM do servidor vLLM (Remoto/Colab): informe com VLLM_VRAM_MB se necessário."""
     raw = os.getenv("VLLM_VRAM_MB")
     if raw:
-        return {"vram_used_mb": int(float(raw)), "fonte": "colab (VLLM_VRAM_MB)"}
-    return {"nota": "VRAM do vLLM nao informada (defina VLLM_VRAM_MB)"}
+        return {"vram_used_mb": int(float(raw)), "fonte": "remoto (VLLM_VRAM_MB)"}
+    return snapshot_vram()
 
 
 def measure_openai_tps(
     base_url: str, api_key: str, model: str, prompt: str | None = None, max_tokens: int = 128
 ) -> dict[str, Any]:
-    """Medição de tok/s via API OpenAI-compatível (vLLM), com as mesmas chaves de measure_ollama_tps().
-
-    tokens_per_second_api = tokens / tempo após o 1º token (como o eval_duration do Ollama,
-    que exclui carga e leitura do prompt); tokens_per_second_wall = tokens / tempo total.
-    """
+    """Medição de tok/s via API OpenAI-compatível (vLLM)."""
     from openai import OpenAI
 
     prompt = prompt or "Explique em uma frase o que é uma porta lógica AND."
@@ -329,19 +239,17 @@ def measure_openai_tps(
 
 
 def _measure_tps(model: dict) -> dict[str, Any]:
-    if model.get("backend") == "vllm":
-        return measure_openai_tps(
-            os.environ["LLM_BASE_URL"], os.environ.get("LLM_API_KEY", ""), model["tag"]
-        )
-    return measure_ollama_tps(model["tag"])
+    return measure_openai_tps(
+        os.environ["LLM_BASE_URL"], os.environ.get("LLM_API_KEY", ""), model["tag"]
+    )
 
 
 def _snap_vram(model: dict) -> dict[str, Any]:
-    return snapshot_vram_remote() if model.get("backend") == "vllm" else snapshot_vram()
+    return snapshot_vram_remote()
 
 
 def _snap_ram(model: dict) -> dict[str, Any]:
-    return {} if model.get("backend") == "vllm" else snapshot_ram()
+    return snapshot_ram()
 
 
 def create_rag_llm(model_tag: str):
@@ -361,7 +269,7 @@ def run_rag_batch(
 ) -> list[dict]:
     from main import query_api
 
-    os.environ["LLM_BASE_URL"] = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
+    os.environ["LLM_BASE_URL"] = os.getenv("LLM_BASE_URL", "http://localhost:8000/v1")
     os.environ["LLM_MODEL"] = model_tag
     if llm_client is None:
         llm_client = create_rag_llm(model_tag)
@@ -578,11 +486,10 @@ def run_single_model_benchmark(
     model: dict,
     df: pd.DataFrame,
     *,
-    skip_pull: bool = False,
     skip_ragas: bool = False,
     warmup_only: bool = False,
 ) -> dict[str, Any]:
-    """Executa benchmark completo de um modelo."""
+    """Executa benchmark completo de um modelo via vLLM."""
     load_env()
     _apply_backend_env(model)
     print(f"\n{'=' * 60}\nModelo: {model['name']} ({model['tag']})\n{'=' * 60}")
@@ -612,10 +519,6 @@ def run_single_model_benchmark(
             "vram_idle": _snap_vram(model),
             "ram_idle": _snap_ram(model),
         }
-
-        if not skip_pull and model.get("backend") != "vllm":
-            print("Pull do modelo...")
-            ollama_pull(model["tag"])
 
         print("Warm-up (descartado)...")
         _measure_tps(model)
